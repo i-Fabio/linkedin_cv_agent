@@ -42,6 +42,8 @@ export const openBrowser = (id: number) =>
   request<{ run: ExtractionRun; reused: boolean }>(`/jobs/${id}/open-browser`, { method: 'POST' });
 export const confirmLogin = (id: number) =>
   request<{ run: ExtractionRun }>(`/jobs/${id}/confirm-login`, { method: 'POST' });
+export const extractCurrentCandidate = (id: number) =>
+  request<Candidate>(`/jobs/${id}/extract-current-candidate`, { method: 'POST' });
 
 // Question mappings
 export const listQuestionMappings = (jobId: number) =>

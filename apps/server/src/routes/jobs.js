@@ -6,6 +6,8 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { JOB_STATUSES } from '../utils/constants.js';
 import { config } from '../config.js';
 import { openBrowserForJob, confirmLogin, getActiveRun } from '../automation/browserManager.js';
+import { extractCurrentCandidate } from '../automation/candidateExtractor.js';
+import { serializeCandidate } from './candidates.js';
 
 export const jobsRouter = Router();
 
@@ -126,6 +128,22 @@ jobsRouter.post(
     }
 
     res.json({ run });
+  })
+);
+
+// POST /api/jobs/:id/extract-current-candidate
+jobsRouter.post(
+  '/:id/extract-current-candidate',
+  asyncHandler(async (req, res) => {
+    const job = findJobOr404(req, res);
+    if (!job) return;
+
+    try {
+      const candidate = await extractCurrentCandidate(job);
+      res.json(serializeCandidate(candidate));
+    } catch (err) {
+      res.status(409).json({ error: err.message });
+    }
   })
 );
 

@@ -57,11 +57,21 @@ Respuesta:
 
 ### POST /api/jobs/:id/confirm-login
 Confirma que el usuario ha iniciado sesión manualmente en el navegador abierto.
-Marca el run como `awaiting_extraction` (la extracción real de candidatos llega
-en la Fase 4). Devuelve 409 si no hay navegador abierto para la vacante.
+Marca el run como `awaiting_extraction`. Devuelve 409 si no hay navegador
+abierto para la vacante.
+
+### POST /api/jobs/:id/extract-current-candidate
+Lee el `body.innerText()` de la página actualmente abierta en el navegador de
+la vacante, extrae el bloque "Respuestas a preguntas de preselección", parsea
+las preguntas/respuestas, crea `question_mappings` sugeridos para preguntas
+nuevas y guarda/actualiza el candidato (deduplicado por
+`linkedin_profile_url`). Devuelve el candidato serializado. 409 si no hay
+navegador abierto. La descarga de PDF (Fase 5) y el recorrido automático de
+la lista completa de candidatos (Fase 6) no están implementados todavía —
+esta acción opera sobre un único candidato a la vez, navegado manualmente.
 
 ### POST /api/jobs/:id/start-extraction
-Inicia extracción.
+Inicia extracción automática de todos los candidatos (Fase 6, pendiente).
 
 Body:
 ```json

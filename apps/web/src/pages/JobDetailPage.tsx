@@ -136,7 +136,7 @@ export default function JobDetailPage() {
             Navegador abierto — login confirmado
           </button>
         )}
-        <button className="btn btn-secondary" disabled title="Disponible a partir de la Fase 4">
+        <button className="btn btn-secondary" disabled title="Disponible a partir de la Fase 6">
           Iniciar extracción
         </button>
         <button className="btn btn-secondary" disabled title="Disponible a partir de la Fase 7">
@@ -209,7 +209,7 @@ export default function JobDetailPage() {
       </div>
 
       {tab === 'mapping' && <QuestionMappingsTable jobId={job.id} />}
-      {tab === 'candidates' && <CandidatesTable jobId={job.id} />}
+      {tab === 'candidates' && <CandidatesTable jobId={job.id} activeRun={job.active_run ?? null} />}
       {tab === 'logs' && <LogsPanel activeRun={job.active_run ?? null} />}
     </div>
   );

@@ -30,6 +30,10 @@ export function hasOpenSession(jobId) {
   return sessions.has(jobId);
 }
 
+export function getSession(jobId) {
+  return sessions.get(jobId) ?? null;
+}
+
 export async function openBrowserForJob(job) {
   const existing = sessions.get(job.id);
   if (existing) {
@@ -96,7 +100,7 @@ export function confirmLogin(jobId) {
   }
 
   session.runLogger.info(
-    'Usuario confirmo login manual. La extraccion automatica de candidatos llega en la Fase 4.'
+    'Usuario confirmo login manual. Navega hasta la pagina de un candidato y pulsa "Extraer candidato actual".'
   );
   db.prepare("UPDATE extraction_runs SET status = 'awaiting_extraction' WHERE id = ?").run(
     session.runId

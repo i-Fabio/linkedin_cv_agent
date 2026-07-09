@@ -25,7 +25,7 @@ function findCandidateOr404(id, res) {
   return candidate;
 }
 
-function serializeCandidate(candidate) {
+export function serializeCandidate(candidate) {
   return {
     ...candidate,
     raw_answers_json: candidate.raw_answers_json ? JSON.parse(candidate.raw_answers_json) : null,

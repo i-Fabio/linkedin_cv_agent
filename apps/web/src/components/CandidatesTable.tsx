@@ -1,10 +1,11 @@
 import { Fragment, useEffect, useState } from 'react';
-import { listCandidates } from '../api/client';
-import { Candidate } from '../types';
+import { ApiError, extractCurrentCandidate, listCandidates } from '../api/client';
+import { Candidate, ExtractionRun } from '../types';
 import StatusBadge from './StatusBadge';
 
 interface Props {
   jobId: number;
+  activeRun: ExtractionRun | null;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -14,36 +15,64 @@ const STATUS_LABELS: Record<string, string> = {
   missing_pdf: 'Sin PDF',
 };
 
-export default function CandidatesTable({ jobId }: Props) {
+export default function CandidatesTable({ jobId, activeRun }: Props) {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [extracting, setExtracting] = useState(false);
+
+  async function refresh() {
+    setLoading(true);
+    try {
+      const data = await listCandidates(jobId);
+      setCandidates(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error cargando candidatos');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    listCandidates(jobId)
-      .then((data) => {
-        if (!cancelled) setCandidates(data);
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Error cargando candidatos');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobId]);
+
+  async function handleExtract() {
+    setExtracting(true);
+    try {
+      await extractCurrentCandidate(jobId);
+      await refresh();
+      setError(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Error extrayendo el candidato actual');
+    } finally {
+      setExtracting(false);
+    }
+  }
+
+  const canExtract = activeRun?.status === 'awaiting_extraction';
 
   return (
     <div className="card">
       <h2>Candidatos</h2>
       <p className="muted">
-        Se completa automáticamente al ejecutar una extracción con Playwright (próxima fase).
+        Navega hasta la página de un candidato en el navegador abierto y pulsa "Extraer candidato
+        actual" para leer sus respuestas de preselección. La descarga de PDF y el recorrido
+        automático de la lista llegan en fases siguientes.
       </p>
+
+      <div className="actions-row">
+        <button
+          className="btn btn-secondary"
+          onClick={handleExtract}
+          disabled={!canExtract || extracting}
+          title={canExtract ? undefined : 'Requiere un navegador abierto con login confirmado'}
+        >
+          {extracting ? 'Extrayendo...' : 'Extraer candidato actual'}
+        </button>
+      </div>
 
       {error && <div className="error-banner">{error}</div>}
 
