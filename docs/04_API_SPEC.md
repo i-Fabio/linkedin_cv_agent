@@ -47,7 +47,18 @@ Body:
 ## Extraction
 
 ### POST /api/jobs/:id/open-browser
-Abre navegador en la URL de la vacante.
+Abre navegador Playwright (sesión persistente) en la URL de la vacante.
+Si ya hay uno abierto para esa vacante, lo reutiliza (`reused: true`).
+
+Respuesta:
+```json
+{ "run": { "id": 1, "status": "awaiting_login", "...": "..." }, "reused": false }
+```
+
+### POST /api/jobs/:id/confirm-login
+Confirma que el usuario ha iniciado sesión manualmente en el navegador abierto.
+Marca el run como `awaiting_extraction` (la extracción real de candidatos llega
+en la Fase 4). Devuelve 409 si no hay navegador abierto para la vacante.
 
 ### POST /api/jobs/:id/start-extraction
 Inicia extracción.

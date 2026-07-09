@@ -253,6 +253,13 @@ label {
   color: var(--color-error-text);
 }
 
+.badge-opening,
+.badge-awaiting_login,
+.badge-awaiting_extraction {
+  background: var(--color-progress-bg);
+  color: var(--color-progress-text);
+}
+
 .actions-row {
   display: flex;
   gap: 8px;

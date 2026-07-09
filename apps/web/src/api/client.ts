@@ -1,4 +1,4 @@
-import type { Candidate, Job, QuestionMapping } from '../types';
+import type { Candidate, ExtractionRun, Job, QuestionMapping } from '../types';
 
 export class ApiError extends Error {
   status: number;
@@ -38,6 +38,10 @@ export const createJob = (data: { name: string; linkedin_url: string }) =>
 export const updateJob = (id: number, data: Partial<Job>) =>
   request<Job>(`/jobs/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 export const deleteJob = (id: number) => request<void>(`/jobs/${id}`, { method: 'DELETE' });
+export const openBrowser = (id: number) =>
+  request<{ run: ExtractionRun; reused: boolean }>(`/jobs/${id}/open-browser`, { method: 'POST' });
+export const confirmLogin = (id: number) =>
+  request<{ run: ExtractionRun }>(`/jobs/${id}/confirm-login`, { method: 'POST' });
 
 // Question mappings
 export const listQuestionMappings = (jobId: number) =>
@@ -57,6 +61,26 @@ export const updateQuestionMapping = (id: number, data: Partial<QuestionMapping>
   });
 export const deleteQuestionMapping = (id: number) =>
   request<void>(`/question-mappings/${id}`, { method: 'DELETE' });
+
+export function subscribeToRunEvents(
+  runId: number,
+  handlers: { onLog?: (line: string) => void; onStatus?: (status: string) => void }
+): () => void {
+  const source = new EventSource(`/api/runs/${runId}/events`);
+  if (handlers.onLog) {
+    source.addEventListener('log', (event) => {
+      const data = JSON.parse((event as MessageEvent).data);
+      handlers.onLog!(data.line);
+    });
+  }
+  if (handlers.onStatus) {
+    source.addEventListener('status', (event) => {
+      const data = JSON.parse((event as MessageEvent).data);
+      handlers.onStatus!(data.status);
+    });
+  }
+  return () => source.close();
+}
 
 // Candidates
 export const listCandidates = (jobId: number) =>

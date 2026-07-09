@@ -5,6 +5,7 @@ import { db } from '../db/index.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { JOB_STATUSES } from '../utils/constants.js';
 import { config } from '../config.js';
+import { openBrowserForJob, confirmLogin, getActiveRun } from '../automation/browserManager.js';
 
 export const jobsRouter = Router();
 
@@ -36,7 +37,11 @@ jobsRouter.get(
   '/',
   asyncHandler(async (req, res) => {
     const jobs = db.prepare('SELECT * FROM jobs ORDER BY created_at DESC').all();
-    const withCounts = jobs.map((job) => ({ ...job, ...getJobCounts(job.id) }));
+    const withCounts = jobs.map((job) => ({
+      ...job,
+      ...getJobCounts(job.id),
+      active_run: getActiveRun(job.id) ?? null,
+    }));
     res.json(withCounts);
   })
 );
@@ -83,7 +88,44 @@ jobsRouter.get(
   asyncHandler(async (req, res) => {
     const job = findJobOr404(req, res);
     if (!job) return;
-    res.json({ ...job, ...getJobCounts(job.id) });
+    res.json({ ...job, ...getJobCounts(job.id), active_run: getActiveRun(job.id) ?? null });
+  })
+);
+
+// POST /api/jobs/:id/open-browser
+jobsRouter.post(
+  '/:id/open-browser',
+  asyncHandler(async (req, res) => {
+    const job = findJobOr404(req, res);
+    if (!job) return;
+
+    const { run, reused } = await openBrowserForJob(job);
+
+    if (!reused) {
+      db.prepare("UPDATE jobs SET status = 'in_progress', last_run_at = ?, updated_at = ? WHERE id = ?").run(
+        nowIso(),
+        nowIso(),
+        job.id
+      );
+    }
+
+    res.status(201).json({ run, reused });
+  })
+);
+
+// POST /api/jobs/:id/confirm-login
+jobsRouter.post(
+  '/:id/confirm-login',
+  asyncHandler(async (req, res) => {
+    const job = findJobOr404(req, res);
+    if (!job) return;
+
+    const run = confirmLogin(job.id);
+    if (!run) {
+      return res.status(409).json({ error: 'No hay ningun navegador abierto para esta vacante' });
+    }
+
+    res.json({ run });
   })
 );
 

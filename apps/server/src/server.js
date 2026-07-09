@@ -1,11 +1,12 @@
 import { config } from './config.js';
 import { ensureAppDirs } from './utils/ensureDirs.js';
-import { runMigrations } from './db/index.js';
+import { runMigrations, recoverStaleRuns } from './db/index.js';
 import { createApp } from './app.js';
 import { logger } from './utils/logger.js';
 
 ensureAppDirs();
 runMigrations();
+recoverStaleRuns();
 
 const app = createApp();
 

@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { getJob, updateJob } from '../api/client';
+import { ApiError, confirmLogin, getJob, openBrowser, updateJob } from '../api/client';
 import { Job, JobStatus, JOB_STATUS_LABELS } from '../types';
 import StatusBadge from '../components/StatusBadge';
 import QuestionMappingsTable from '../components/QuestionMappingsTable';
@@ -24,6 +24,7 @@ export default function JobDetailPage() {
   const [linkedinUrl, setLinkedinUrl] = useState('');
   const [status, setStatus] = useState<JobStatus>('pending');
   const [saving, setSaving] = useState(false);
+  const [browserActionLoading, setBrowserActionLoading] = useState(false);
 
   async function refresh() {
     setLoading(true);
@@ -45,6 +46,33 @@ export default function JobDetailPage() {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobId]);
+
+  async function handleOpenBrowser() {
+    setBrowserActionLoading(true);
+    try {
+      await openBrowser(jobId);
+      await refresh();
+      setTab('logs');
+      setError(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Error abriendo el navegador');
+    } finally {
+      setBrowserActionLoading(false);
+    }
+  }
+
+  async function handleConfirmLogin() {
+    setBrowserActionLoading(true);
+    try {
+      await confirmLogin(jobId);
+      await refresh();
+      setError(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Error confirmando el login');
+    } finally {
+      setBrowserActionLoading(false);
+    }
+  }
 
   async function handleSave(e: FormEvent) {
     e.preventDefault();
@@ -95,10 +123,20 @@ export default function JobDetailPage() {
       {error && <div className="error-banner">{error}</div>}
 
       <div className="actions-row">
-        <button className="btn btn-secondary" disabled title="Disponible a partir de la Fase 3">
-          Abrir navegador
-        </button>
-        <button className="btn btn-secondary" disabled title="Disponible a partir de la Fase 3">
+        {!job.active_run || ['completed', 'error'].includes(job.active_run.status) ? (
+          <button className="btn btn-secondary" onClick={handleOpenBrowser} disabled={browserActionLoading}>
+            {browserActionLoading ? 'Abriendo...' : 'Abrir navegador'}
+          </button>
+        ) : job.active_run.status === 'awaiting_login' ? (
+          <button className="btn" onClick={handleConfirmLogin} disabled={browserActionLoading}>
+            {browserActionLoading ? 'Confirmando...' : 'Estoy logueado, continuar'}
+          </button>
+        ) : (
+          <button className="btn btn-secondary" disabled>
+            Navegador abierto — login confirmado
+          </button>
+        )}
+        <button className="btn btn-secondary" disabled title="Disponible a partir de la Fase 4">
           Iniciar extracción
         </button>
         <button className="btn btn-secondary" disabled title="Disponible a partir de la Fase 7">
@@ -172,7 +210,7 @@ export default function JobDetailPage() {
 
       {tab === 'mapping' && <QuestionMappingsTable jobId={job.id} />}
       {tab === 'candidates' && <CandidatesTable jobId={job.id} />}
-      {tab === 'logs' && <LogsPanel lastRunAt={job.last_run_at} />}
+      {tab === 'logs' && <LogsPanel activeRun={job.active_run ?? null} />}
     </div>
   );
 }
