@@ -70,6 +70,16 @@ navegador abierto. La descarga de PDF (Fase 5) y el recorrido automático de
 la lista completa de candidatos (Fase 6) no están implementados todavía —
 esta acción opera sobre un único candidato a la vez, navegado manualmente.
 
+### POST /api/jobs/:id/download-current-candidate-pdf
+Busca un enlace/botón de descarga de CV en la página actualmente abierta
+(por nombre accesible, no por clase CSS), descarga el PDF a la carpeta de
+descarga de la vacante con el nombre normalizado del candidato (o
+`candidato_{id}.pdf` si no se pudo derivar un nombre), y guarda
+`pdf_filename`/`pdf_path` en el candidato (deduplicado por
+`linkedin_profile_url`, igual que `extract-current-candidate`). 409 si no
+hay navegador abierto, si no se encuentra un enlace de descarga, o si el CV
+se abre en un visor sin disparar una descarga real.
+
 ### POST /api/jobs/:id/start-extraction
 Inicia extracción automática de todos los candidatos (Fase 6, pendiente).
 

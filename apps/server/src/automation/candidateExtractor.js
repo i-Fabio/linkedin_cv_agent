@@ -6,6 +6,7 @@ import {
   slugifyField,
   normalizeAnswer,
 } from './answerParser.js';
+import { deriveNameFromTitle, findOrCreateCandidateStub } from './candidateStore.js';
 
 function nowIso() {
   return new Date().toISOString();
@@ -68,34 +69,21 @@ export async function extractCurrentCandidate(job) {
     normalizedAnswers[mapping.internal_field] = normalizeAnswer(answer, mapping.field_type);
   }
 
-  const timestamp = nowIso();
-  const existingCandidate = db
-    .prepare('SELECT * FROM candidates WHERE job_id = ? AND linkedin_profile_url = ?')
-    .get(job.id, profileUrl);
+  const derivedName = deriveNameFromTitle(await page.title());
+  const candidate = findOrCreateCandidateStub(job.id, profileUrl, derivedName);
 
-  if (existingCandidate) {
-    db.prepare(
-      `UPDATE candidates
-       SET raw_answers_json = ?, normalized_answers_json = ?, extraction_status = ?, updated_at = ?
-       WHERE id = ?`
-    ).run(
-      JSON.stringify(rawAnswers),
-      JSON.stringify(normalizedAnswers),
-      existingCandidate.pdf_path ? 'ok' : 'missing_pdf',
-      timestamp,
-      existingCandidate.id
-    );
-    runLogger.info(`Candidato actualizado (id ${existingCandidate.id})`);
-    return db.prepare('SELECT * FROM candidates WHERE id = ?').get(existingCandidate.id);
-  }
+  db.prepare(
+    `UPDATE candidates
+     SET raw_answers_json = ?, normalized_answers_json = ?, extraction_status = ?, updated_at = ?
+     WHERE id = ?`
+  ).run(
+    JSON.stringify(rawAnswers),
+    JSON.stringify(normalizedAnswers),
+    candidate.pdf_path ? 'ok' : 'missing_pdf',
+    nowIso(),
+    candidate.id
+  );
 
-  const insert = db
-    .prepare(
-      `INSERT INTO candidates (job_id, name, linkedin_profile_url, extraction_status, raw_answers_json, normalized_answers_json, created_at, updated_at)
-       VALUES (?, NULL, ?, 'missing_pdf', ?, ?, ?, ?)`
-    )
-    .run(job.id, profileUrl, JSON.stringify(rawAnswers), JSON.stringify(normalizedAnswers), timestamp, timestamp);
-
-  runLogger.info(`Candidato guardado (id ${insert.lastInsertRowid})`);
-  return db.prepare('SELECT * FROM candidates WHERE id = ?').get(insert.lastInsertRowid);
+  runLogger.info(`Candidato guardado (id ${candidate.id})`);
+  return db.prepare('SELECT * FROM candidates WHERE id = ?').get(candidate.id);
 }

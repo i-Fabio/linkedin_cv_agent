@@ -44,6 +44,8 @@ export const confirmLogin = (id: number) =>
   request<{ run: ExtractionRun }>(`/jobs/${id}/confirm-login`, { method: 'POST' });
 export const extractCurrentCandidate = (id: number) =>
   request<Candidate>(`/jobs/${id}/extract-current-candidate`, { method: 'POST' });
+export const downloadCurrentCandidatePdf = (id: number) =>
+  request<Candidate>(`/jobs/${id}/download-current-candidate-pdf`, { method: 'POST' });
 
 // Question mappings
 export const listQuestionMappings = (jobId: number) =>
