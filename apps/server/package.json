@@ -1,0 +1,29 @@
+{
+  "name": "@linkedin-cv-agent/server",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Backend Express + SQLite para linkedin-cv-agent.",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.9.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "morgan": "^1.10.0",
+    "playwright": "^1.48.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  },
+  "nodemonConfig": {
+    "ignore": ["../../data/**"]
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

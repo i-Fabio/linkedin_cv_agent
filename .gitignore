@@ -1,0 +1,30 @@
+node_modules/
+.DS_Store
+*.log
+npm-debug.log*
+
+# env
+.env
+.env.local
+
+# data (local, not versioned)
+data/app.sqlite
+data/app.sqlite-journal
+data/app.sqlite-wal
+data/app.sqlite-shm
+data/browser-session/*
+!data/browser-session/.gitkeep
+data/downloads/*
+!data/downloads/.gitkeep
+data/logs/*
+!data/logs/.gitkeep
+
+# frontend build output
+apps/web/dist/
+apps/web/node_modules/
+apps/web/*.tsbuildinfo
+apps/web/vite.config.js
+apps/web/vite.config.d.ts
+
+# server
+apps/server/node_modules/
