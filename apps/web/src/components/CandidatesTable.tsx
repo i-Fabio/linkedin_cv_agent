@@ -23,22 +23,32 @@ export default function CandidatesTable({ jobId, activeRun }: Props) {
   const [extracting, setExtracting] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
-  async function refresh() {
-    setLoading(true);
+  async function refreshQuietly() {
     try {
       const data = await listCandidates(jobId);
       setCandidates(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error cargando candidatos');
-    } finally {
-      setLoading(false);
     }
+  }
+
+  async function refresh() {
+    setLoading(true);
+    await refreshQuietly();
+    setLoading(false);
   }
 
   useEffect(() => {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobId]);
+
+  useEffect(() => {
+    if (activeRun?.status !== 'processing') return;
+    const interval = setInterval(refreshQuietly, 3000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeRun?.status]);
 
   async function handleExtract() {
     setExtracting(true);

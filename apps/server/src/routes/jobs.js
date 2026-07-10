@@ -8,6 +8,7 @@ import { config } from '../config.js';
 import { openBrowserForJob, confirmLogin, getActiveRun } from '../automation/browserManager.js';
 import { extractCurrentCandidate } from '../automation/candidateExtractor.js';
 import { downloadCurrentCandidatePdf } from '../automation/pdfDownloader.js';
+import { startFullExtraction } from '../automation/candidateListRunner.js';
 import { serializeCandidate } from './candidates.js';
 
 export const jobsRouter = Router();
@@ -158,6 +159,22 @@ jobsRouter.post(
     try {
       const candidate = await downloadCurrentCandidatePdf(job);
       res.json(serializeCandidate(candidate));
+    } catch (err) {
+      res.status(409).json({ error: err.message });
+    }
+  })
+);
+
+// POST /api/jobs/:id/start-extraction
+jobsRouter.post(
+  '/:id/start-extraction',
+  asyncHandler(async (req, res) => {
+    const job = findJobOr404(req, res);
+    if (!job) return;
+
+    try {
+      const run = startFullExtraction(job);
+      res.status(202).json({ run });
     } catch (err) {
       res.status(409).json({ error: err.message });
     }

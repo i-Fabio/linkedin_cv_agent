@@ -27,7 +27,13 @@ export interface QuestionMapping {
   updated_at: string;
 }
 
-export type RunStatus = 'opening' | 'awaiting_login' | 'awaiting_extraction' | 'completed' | 'error';
+export type RunStatus =
+  | 'opening'
+  | 'awaiting_login'
+  | 'awaiting_extraction'
+  | 'processing'
+  | 'completed'
+  | 'error';
 
 export interface ExtractionRun {
   id: number;
@@ -45,6 +51,7 @@ export const RUN_STATUS_LABELS: Record<RunStatus, string> = {
   opening: 'Abriendo navegador',
   awaiting_login: 'Esperando login',
   awaiting_extraction: 'Login confirmado',
+  processing: 'Extrayendo candidatos',
   completed: 'Completado',
   error: 'Error',
 };

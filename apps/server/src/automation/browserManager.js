@@ -34,6 +34,22 @@ export function getSession(jobId) {
   return sessions.get(jobId) ?? null;
 }
 
+export function isBusy(jobId) {
+  return sessions.get(jobId)?.busy === true;
+}
+
+export function setBusy(jobId, value) {
+  const session = sessions.get(jobId);
+  if (session) session.busy = value;
+}
+
+export function setRunStatus(jobId, status) {
+  const session = sessions.get(jobId);
+  if (!session) return null;
+  db.prepare('UPDATE extraction_runs SET status = ? WHERE id = ?').run(status, session.runId);
+  return db.prepare('SELECT * FROM extraction_runs WHERE id = ?').get(session.runId);
+}
+
 export async function openBrowserForJob(job) {
   const existing = sessions.get(job.id);
   if (existing) {
@@ -100,7 +116,7 @@ export function confirmLogin(jobId) {
   }
 
   session.runLogger.info(
-    'Usuario confirmo login manual. Navega hasta la pagina de un candidato y pulsa "Extraer candidato actual".'
+    'Usuario confirmo login manual. Pulsa "Iniciar extraccion" para procesar toda la lista, o navega a un candidato y usa las acciones manuales.'
   );
   db.prepare("UPDATE extraction_runs SET status = 'awaiting_extraction' WHERE id = ?").run(
     session.runId

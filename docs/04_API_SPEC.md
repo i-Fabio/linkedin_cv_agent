@@ -66,9 +66,9 @@ la vacante, extrae el bloque "Respuestas a preguntas de preselección", parsea
 las preguntas/respuestas, crea `question_mappings` sugeridos para preguntas
 nuevas y guarda/actualiza el candidato (deduplicado por
 `linkedin_profile_url`). Devuelve el candidato serializado. 409 si no hay
-navegador abierto. La descarga de PDF (Fase 5) y el recorrido automático de
-la lista completa de candidatos (Fase 6) no están implementados todavía —
-esta acción opera sobre un único candidato a la vez, navegado manualmente.
+navegador abierto. Pensada para uso manual sobre un único candidato; el
+recorrido automático de toda la lista usa `start-extraction` (abajo), que
+llama a esta misma lógica por cada candidato detectado.
 
 ### POST /api/jobs/:id/download-current-candidate-pdf
 Busca un enlace/botón de descarga de CV en la página actualmente abierta
@@ -81,13 +81,24 @@ hay navegador abierto, si no se encuentra un enlace de descarga, o si el CV
 se abre en un visor sin disparar una descarga real.
 
 ### POST /api/jobs/:id/start-extraction
-Inicia extracción automática de todos los candidatos (Fase 6, pendiente).
+Requiere un run en estado `awaiting_extraction` (navegador abierto, login
+confirmado). Detecta la lista de candidatos en la página actual (por
+patrón de URL `/applicants/{id}/detail`, con scroll infinito y paginación
+"siguiente"/"next"); si no encuentra ninguno pero la página actual ya es
+el detalle de un candidato, procesa solo ese. Por cada candidato: navega,
+llama a `extract-current-candidate` y `download-current-candidate-pdf`
+(los fallos de PDF no detienen el run), con una pausa aleatoria entre
+candidatos. Marca el run como `processing` y responde **inmediatamente**
+con `202` — el trabajo continúa en segundo plano; sigue el progreso via
+`GET /api/runs/:id/events` o consultando `GET /api/jobs/:id`
+(`active_run.processed_candidates` / `total_candidates`). Al terminar,
+marca el run `completed` y la vacante `completed` (o `error` si el propio
+recorrido falla). 409 si no hay navegador abierto o si ya hay una
+extracción en curso para esa vacante.
 
-Body:
+Respuesta (202):
 ```json
-{
-  "mode": "all"
-}
+{ "run": { "id": 1, "status": "processing", "...": "..." } }
 ```
 
 ### GET /api/runs/:id/logs

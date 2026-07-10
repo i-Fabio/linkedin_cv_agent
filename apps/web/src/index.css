@@ -255,7 +255,8 @@ label {
 
 .badge-opening,
 .badge-awaiting_login,
-.badge-awaiting_extraction {
+.badge-awaiting_extraction,
+.badge-processing {
   background: var(--color-progress-bg);
   color: var(--color-progress-text);
 }

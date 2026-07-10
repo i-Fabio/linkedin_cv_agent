@@ -46,6 +46,8 @@ export const extractCurrentCandidate = (id: number) =>
   request<Candidate>(`/jobs/${id}/extract-current-candidate`, { method: 'POST' });
 export const downloadCurrentCandidatePdf = (id: number) =>
   request<Candidate>(`/jobs/${id}/download-current-candidate-pdf`, { method: 'POST' });
+export const startExtraction = (id: number) =>
+  request<{ run: ExtractionRun }>(`/jobs/${id}/start-extraction`, { method: 'POST' });
 
 // Question mappings
 export const listQuestionMappings = (jobId: number) =>

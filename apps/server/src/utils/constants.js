@@ -9,13 +9,11 @@ export const CANDIDATE_EXTRACTION_STATUSES = [
   'missing_pdf',
 ];
 
-// Estados de una extraction_run. A partir de la Fase 3 solo se usan los
-// relacionados con la apertura del navegador y confirmacion de login; el
-// resto (processing/completed por extraccion real) llegan en fases 4-6.
 export const RUN_STATUSES = [
   'opening',
   'awaiting_login',
   'awaiting_extraction',
+  'processing',
   'completed',
   'error',
 ];

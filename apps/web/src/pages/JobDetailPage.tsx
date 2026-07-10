@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ApiError, confirmLogin, getJob, openBrowser, updateJob } from '../api/client';
+import { ApiError, confirmLogin, getJob, openBrowser, startExtraction, updateJob } from '../api/client';
 import { Job, JobStatus, JOB_STATUS_LABELS } from '../types';
 import StatusBadge from '../components/StatusBadge';
 import QuestionMappingsTable from '../components/QuestionMappingsTable';
@@ -47,6 +47,13 @@ export default function JobDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobId]);
 
+  useEffect(() => {
+    if (job?.active_run?.status !== 'processing') return;
+    const interval = setInterval(refresh, 3000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [job?.active_run?.status]);
+
   async function handleOpenBrowser() {
     setBrowserActionLoading(true);
     try {
@@ -69,6 +76,20 @@ export default function JobDetailPage() {
       setError(null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Error confirmando el login');
+    } finally {
+      setBrowserActionLoading(false);
+    }
+  }
+
+  async function handleStartExtraction() {
+    setBrowserActionLoading(true);
+    try {
+      await startExtraction(jobId);
+      await refresh();
+      setTab('logs');
+      setError(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Error iniciando la extracción');
     } finally {
       setBrowserActionLoading(false);
     }
@@ -133,12 +154,28 @@ export default function JobDetailPage() {
           </button>
         ) : (
           <button className="btn btn-secondary" disabled>
-            Navegador abierto — login confirmado
+            {job.active_run.status === 'opening' ? 'Abriendo navegador...' : 'Navegador abierto — login confirmado'}
           </button>
         )}
-        <button className="btn btn-secondary" disabled title="Disponible a partir de la Fase 6">
-          Iniciar extracción
-        </button>
+
+        {job.active_run?.status === 'processing' ? (
+          <button className="btn btn-secondary" disabled>
+            Extrayendo... ({job.active_run.processed_candidates}/{job.active_run.total_candidates})
+          </button>
+        ) : (
+          <button
+            className="btn btn-secondary"
+            onClick={handleStartExtraction}
+            disabled={job.active_run?.status !== 'awaiting_extraction' || browserActionLoading}
+            title={
+              job.active_run?.status === 'awaiting_extraction'
+                ? undefined
+                : 'Requiere un navegador abierto con login confirmado'
+            }
+          >
+            Iniciar extracción
+          </button>
+        )}
         <button className="btn btn-secondary" disabled title="Disponible a partir de la Fase 7">
           Exportar CSV
         </button>
