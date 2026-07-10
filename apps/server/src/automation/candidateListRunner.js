@@ -39,7 +39,7 @@ async function runFullExtractionInBackground(job, session) {
   const { page, runLogger } = session;
 
   try {
-    let links = await detectAllCandidateLinks(page);
+    let links = await detectAllCandidateLinks(page, { log: (msg) => runLogger.info(msg) });
 
     if (links.length === 0 && looksLikeCandidateDetailPage(page.url())) {
       runLogger.info('La pagina actual ya es el detalle de un unico candidato; se procesara solo ese.');

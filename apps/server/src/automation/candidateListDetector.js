@@ -46,31 +46,67 @@ async function scrollCandidateList(page) {
     .catch(() => false);
 }
 
-// El boton de paginacion de LinkedIn suele ser solo un icono con
-// aria-label="Siguiente", asi que ademas del nombre accesible exacto se
-// prueba con aria-label parcial.
-async function findNextPageTrigger(page) {
+// La paginacion de LinkedIn (artdeco) puede ser un boton con texto
+// "Siguiente", solo-icono con aria-label, o botones numerados por pagina.
+// Se prueban varias estrategias de mas especifica a mas generica, y dentro
+// de cada una se descartan candidatos deshabilitados.
+async function findNextPageTrigger(page, nextPageNumber) {
   const locators = [
+    // Clase estable de la paginacion artdeco de LinkedIn.
+    page.locator('button.artdeco-pagination__button--next'),
     page.getByRole('button', { name: NEXT_PAGE_EXACT }),
     page.getByRole('link', { name: NEXT_PAGE_EXACT }),
     page.locator(
       'button[aria-label*="siguiente" i], a[aria-label*="siguiente" i], button[aria-label*="next" i], a[aria-label*="next" i]'
     ),
+    // Paginacion numerada: el boton de la pagina N.
+    page.getByRole('button', { name: new RegExp(`^(p[aá]gina |page )?${nextPageNumber}$`, 'i') }),
   ];
 
   for (const locator of locators) {
-    if ((await locator.count()) === 0) continue;
-    const first = locator.first();
-    const disabled = await first.isDisabled().catch(() => false);
-    const ariaDisabled = await first.getAttribute('aria-disabled').catch(() => null);
-    if (!disabled && ariaDisabled !== 'true') return first;
+    const count = await locator.count().catch(() => 0);
+    for (let i = 0; i < count; i++) {
+      const el = locator.nth(i);
+      const disabled = await el.isDisabled().catch(() => false);
+      const ariaDisabled = await el.getAttribute('aria-disabled').catch(() => null);
+      if (disabled || ariaDisabled === 'true') continue;
+      return el;
+    }
   }
   return null;
 }
 
+// El boton puede estar fuera del area visible del panel o tapado por otra
+// capa: se intenta el click normal con timeout corto y se degrada a click
+// forzado y a click via DOM antes de rendirse.
+async function clickTrigger(trigger) {
+  await trigger.scrollIntoViewIfNeeded({ timeout: 3000 }).catch(() => {});
+  try {
+    await trigger.click({ timeout: 5000 });
+    return true;
+  } catch {
+    // sigue con el siguiente metodo
+  }
+  try {
+    await trigger.click({ timeout: 3000, force: true });
+    return true;
+  } catch {
+    // sigue con el siguiente metodo
+  }
+  return trigger
+    .evaluate((el) => {
+      el.click();
+      return true;
+    })
+    .catch(() => false);
+}
+
 // Detecta si la pagina actual es una lista de candidatos y, si lo es,
 // recorre scroll infinito y/o paginacion hasta agotar resultados nuevos.
-export async function detectAllCandidateLinks(page, { maxScrolls = 30, maxPages = 20 } = {}) {
+export async function detectAllCandidateLinks(
+  page,
+  { maxScrolls = 30, maxPages = 20, log = () => {} } = {}
+) {
   const all = new Map();
 
   const absorb = (links) => {
@@ -84,7 +120,7 @@ export async function detectAllCandidateLinks(page, { maxScrolls = 30, maxPages 
     return added;
   };
 
-  for (let pageNum = 0; pageNum < maxPages; pageNum++) {
+  for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
     absorb(await collectCandidateLinks(page));
 
     let stableRounds = 0;
@@ -96,11 +132,20 @@ export async function detectAllCandidateLinks(page, { maxScrolls = 30, maxPages 
       if (!scrolled && stableRounds >= 2) break;
     }
 
-    const next = await findNextPageTrigger(page);
-    if (!next) break;
+    log(`Pagina ${pageNum} de la lista: ${all.size} candidatos acumulados`);
+
+    const next = await findNextPageTrigger(page, pageNum + 1);
+    if (!next) {
+      log('No se encontro boton de pagina siguiente; se asume fin de la lista.');
+      break;
+    }
 
     const firstIdBefore = (await collectCandidateLinks(page))[0]?.id ?? null;
-    await next.click().catch(() => {});
+    const clicked = await clickTrigger(next);
+    if (!clicked) {
+      log('No se pudo pulsar el boton de pagina siguiente; se asume fin de la lista.');
+      break;
+    }
 
     // Espera a que la nueva pagina de la lista se renderice de verdad
     // (cambia el primer candidato visible o aparecen ids nuevos), en vez
@@ -113,8 +158,10 @@ export async function detectAllCandidateLinks(page, { maxScrolls = 30, maxPages 
       if (added > 0 || (fresh.length > 0 && fresh[0].id !== firstIdBefore)) progressed = true;
     }
 
-    // Si tras el click no aparecio nada nuevo, se asume ultima pagina.
-    if (!progressed) break;
+    if (!progressed) {
+      log('La lista no cambio tras pulsar "Siguiente"; se asume fin de la lista.');
+      break;
+    }
   }
 
   return [...all.values()].map(({ url, name }) => ({ url, name }));
