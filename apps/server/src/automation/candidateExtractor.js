@@ -6,7 +6,7 @@ import {
   slugifyField,
   normalizeAnswer,
 } from './answerParser.js';
-import { deriveNameFromTitle, findOrCreateCandidateStub } from './candidateStore.js';
+import { deriveNameFromPage, findOrCreateCandidateStub } from './candidateStore.js';
 
 function nowIso() {
   return new Date().toISOString();
@@ -34,7 +34,7 @@ function findOrCreateMapping(jobId, question, answer, mappingByQuestion) {
   return mapping;
 }
 
-export async function extractCurrentCandidate(job) {
+export async function extractCurrentCandidate(job, { fallbackName = null } = {}) {
   const session = getSession(job.id);
   if (!session) {
     throw new Error('No hay ningun navegador abierto para esta vacante');
@@ -69,14 +69,18 @@ export async function extractCurrentCandidate(job) {
     normalizedAnswers[mapping.internal_field] = normalizeAnswer(answer, mapping.field_type);
   }
 
-  const derivedName = deriveNameFromTitle(await page.title());
+  const derivedName = (await deriveNameFromPage(page)) ?? fallbackName;
   const candidate = findOrCreateCandidateStub(job.id, profileUrl, derivedName);
 
+  // COALESCE: si en este pase se derivo un nombre valido, sustituye al que
+  // hubiera (p. ej. el titulo generico de la pestana guardado por versiones
+  // anteriores); si no, conserva el existente.
   db.prepare(
     `UPDATE candidates
-     SET raw_answers_json = ?, normalized_answers_json = ?, extraction_status = ?, updated_at = ?
+     SET name = COALESCE(?, name), raw_answers_json = ?, normalized_answers_json = ?, extraction_status = ?, updated_at = ?
      WHERE id = ?`
   ).run(
+    derivedName,
     JSON.stringify(rawAnswers),
     JSON.stringify(normalizedAnswers),
     candidate.pdf_path ? 'ok' : 'missing_pdf',

@@ -3,6 +3,7 @@ import { getSession, isBusy, setBusy, setRunStatus } from './browserManager.js';
 import { detectAllCandidateLinks, looksLikeCandidateDetailPage } from './candidateListDetector.js';
 import { extractCurrentCandidate } from './candidateExtractor.js';
 import { downloadCurrentCandidatePdf } from './pdfDownloader.js';
+import { cleanCandidateName } from './candidateStore.js';
 
 function nowIso() {
   return new Date().toISOString();
@@ -64,7 +65,9 @@ async function runFullExtractionInBackground(job, session) {
         if (page.url() !== link.url) {
           await page.goto(link.url, { waitUntil: 'domcontentloaded' });
         }
-        await extractCurrentCandidate(job);
+        // La primera linea de la tarjeta de la lista suele ser el nombre;
+        // sirve de respaldo si la pagina de detalle no lo expone.
+        await extractCurrentCandidate(job, { fallbackName: cleanCandidateName(link.name) });
         try {
           await downloadCurrentCandidatePdf(job);
         } catch (pdfErr) {
