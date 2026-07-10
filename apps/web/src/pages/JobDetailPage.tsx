@@ -128,6 +128,10 @@ export default function JobDetailPage() {
     );
   }
 
+  const hasCandidates = (job.candidates_count ?? 0) > 0;
+  const exportTitle = hasCandidates ? undefined : 'No hay candidatos para exportar todavía';
+  const exportClass = `btn btn-secondary${hasCandidates ? '' : ' btn-disabled-link'}`;
+
   return (
     <div>
       <Link to="/" className="back-link">
@@ -176,15 +180,30 @@ export default function JobDetailPage() {
             Iniciar extracción
           </button>
         )}
-        <button className="btn btn-secondary" disabled title="Disponible a partir de la Fase 7">
+        <a
+          className={exportClass}
+          href={hasCandidates ? `/api/jobs/${job.id}/export.csv` : undefined}
+          aria-disabled={!hasCandidates}
+          title={exportTitle}
+        >
           Exportar CSV
-        </button>
-        <button className="btn btn-secondary" disabled title="Disponible a partir de la Fase 7">
+        </a>
+        <a
+          className={exportClass}
+          href={hasCandidates ? `/api/jobs/${job.id}/export.xlsx` : undefined}
+          aria-disabled={!hasCandidates}
+          title={exportTitle}
+        >
           Exportar Excel
-        </button>
-        <button className="btn btn-secondary" disabled title="Disponible a partir de la Fase 7">
+        </a>
+        <a
+          className={exportClass}
+          href={hasCandidates ? `/api/jobs/${job.id}/export.zip` : undefined}
+          aria-disabled={!hasCandidates}
+          title={exportTitle}
+        >
           Exportar ZIP
-        </button>
+        </a>
       </div>
 
       <div className="card">

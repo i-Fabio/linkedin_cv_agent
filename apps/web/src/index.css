@@ -137,6 +137,7 @@ tbody tr:hover {
   cursor: pointer;
   background: var(--color-primary);
   color: white;
+  text-decoration: none;
   transition: background 0.15s ease;
 }
 
@@ -147,6 +148,12 @@ tbody tr:hover {
 .btn:disabled {
   cursor: not-allowed;
   opacity: 0.5;
+}
+
+.btn-disabled-link {
+  cursor: not-allowed;
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 .btn-secondary {

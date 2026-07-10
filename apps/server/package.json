@@ -10,9 +10,11 @@
     "start": "node src/server.js"
   },
   "dependencies": {
+    "archiver": "^8.0.0",
     "better-sqlite3": "^11.9.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
+    "exceljs": "^4.4.0",
     "express": "^4.21.2",
     "morgan": "^1.10.0",
     "playwright": "^1.48.2"
@@ -21,7 +23,9 @@
     "nodemon": "^3.1.9"
   },
   "nodemonConfig": {
-    "ignore": ["../../data/**"]
+    "ignore": [
+      "../../data/**"
+    ]
   },
   "engines": {
     "node": ">=18"

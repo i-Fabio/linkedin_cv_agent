@@ -10,6 +10,11 @@ import { extractCurrentCandidate } from '../automation/candidateExtractor.js';
 import { downloadCurrentCandidatePdf } from '../automation/pdfDownloader.js';
 import { startFullExtraction } from '../automation/candidateListRunner.js';
 import { serializeCandidate } from './candidates.js';
+import { normalizeFilename } from '../utils/normalizeFilename.js';
+import { buildExportData } from '../exports/exportData.js';
+import { rowsToCsv } from '../utils/csv.js';
+import { buildXlsxBuffer } from '../exports/xlsxExport.js';
+import { streamZipExport } from '../exports/zipExport.js';
 
 export const jobsRouter = Router();
 
@@ -178,6 +183,57 @@ jobsRouter.post(
     } catch (err) {
       res.status(409).json({ error: err.message });
     }
+  })
+);
+
+// GET /api/jobs/:id/export.csv
+jobsRouter.get(
+  '/:id/export.csv',
+  asyncHandler(async (req, res) => {
+    const job = findJobOr404(req, res);
+    if (!job) return;
+
+    const { headers, rows } = buildExportData(job.id);
+    const csv = rowsToCsv(headers, rows);
+    const filename = `${normalizeFilename(job.name)}-candidatos.csv`;
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(csv);
+  })
+);
+
+// GET /api/jobs/:id/export.xlsx
+jobsRouter.get(
+  '/:id/export.xlsx',
+  asyncHandler(async (req, res) => {
+    const job = findJobOr404(req, res);
+    if (!job) return;
+
+    const { headers, rows } = buildExportData(job.id);
+    const buffer = await buildXlsxBuffer(headers, rows);
+    const filename = `${normalizeFilename(job.name)}-candidatos.xlsx`;
+
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(buffer);
+  })
+);
+
+// GET /api/jobs/:id/export.zip
+jobsRouter.get(
+  '/:id/export.zip',
+  asyncHandler(async (req, res) => {
+    const job = findJobOr404(req, res);
+    if (!job) return;
+
+    const filename = `${normalizeFilename(job.name)}-export.zip`;
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    streamZipExport(job, res);
   })
 );
 
