@@ -9,6 +9,12 @@ import { normalizeFilename } from '../utils/normalizeFilename.js';
 // visible en vez de clases CSS.
 const CV_LINK_PATTERN = /descargar\s*cv|download\s*(resume|cv)|curriculum(\s*vitae)?|ver\s*cv/i;
 
+// La primera vez que se abre la ficha de un solicitante, LinkedIn muestra
+// "Analizando el currículum en busca de virus. Actualiza la página ahora."
+// y no renderiza el boton de descarga hasta recargar la pagina.
+const VIRUS_SCAN_PATTERN =
+  /analizando el curr[ií]culum en busca de virus|actualiza la p[aá]gina ahora|scanning\s+(this\s+)?r[eé]sum[eé].*virus|refresh the page now/i;
+
 async function findCvTrigger(page) {
   const locators = [page.getByRole('link', { name: CV_LINK_PATTERN }), page.getByRole('button', { name: CV_LINK_PATTERN })];
   for (const locator of locators) {
@@ -17,6 +23,24 @@ async function findCvTrigger(page) {
     }
   }
   return null;
+}
+
+async function findCvTriggerWithRetry(page, runLogger, maxReloads = 3) {
+  let trigger = await findCvTrigger(page);
+
+  for (let attempt = 0; !trigger && attempt < maxReloads; attempt++) {
+    const bodyText = await page.innerText('body').catch(() => '');
+    if (!VIRUS_SCAN_PATTERN.test(bodyText)) break;
+
+    runLogger.info(
+      'LinkedIn esta analizando el CV en busca de virus; recargando la pagina para que aparezca el boton de descarga...'
+    );
+    await page.reload({ waitUntil: 'domcontentloaded' }).catch(() => {});
+    await page.waitForTimeout(1500 + Math.random() * 1500);
+    trigger = await findCvTrigger(page);
+  }
+
+  return trigger;
 }
 
 function nowIso() {
@@ -31,7 +55,7 @@ export async function downloadCurrentCandidatePdf(job) {
 
   const { page, context, runLogger } = session;
 
-  const trigger = await findCvTrigger(page);
+  const trigger = await findCvTriggerWithRetry(page, runLogger);
   if (!trigger) {
     runLogger.warn('No se encontro un enlace/boton de descarga de CV en la pagina actual');
     throw new Error('No se encontro un enlace de descarga de CV en esta pagina');
