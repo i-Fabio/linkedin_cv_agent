@@ -82,9 +82,9 @@ export default function CandidatesTable({ jobId, activeRun }: Props) {
     <div className="card">
       <h2>Candidatos</h2>
       <p className="muted">
-        Navega hasta la página de un candidato en el navegador abierto, pulsa "Extraer candidato
-        actual" para leer sus respuestas de preselección y "Descargar CV" para guardar su PDF. El
-        recorrido automático de toda la lista llega en la Fase 6.
+        Puedes extraer candidatos uno a uno: navega hasta su página en el navegador abierto y
+        pulsa "Extraer candidato actual" / "Descargar CV". O usa "Iniciar extracción" en la
+        cabecera de la vacante para procesar toda la lista automáticamente.
       </p>
 
       <div className="actions-row">

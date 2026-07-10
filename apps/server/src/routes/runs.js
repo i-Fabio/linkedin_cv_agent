@@ -53,15 +53,19 @@ runsRouter.get('/:id/events', (req, res) => {
     }
 
     if (current.log_path && fs.existsSync(current.log_path)) {
-      const { size } = fs.statSync(current.log_path);
-      if (size > lastSize) {
-        const chunk = fs
-          .readFileSync(current.log_path, 'utf-8')
-          .slice(lastSize)
+      const buffer = fs.readFileSync(current.log_path);
+      if (buffer.length > lastSize) {
+        // Se corta el Buffer (offset en bytes) antes de decodificar a UTF-8;
+        // lastSize viene de buffer.length, no del tamano de la cadena ya
+        // decodificada (que difiere en cuanto hay acentos, muy frecuentes
+        // en estos logs en castellano).
+        const chunk = buffer
+          .subarray(lastSize)
+          .toString('utf-8')
           .split('\n')
           .filter((line) => line.trim().length > 0);
         chunk.forEach(sendLine);
-        lastSize = size;
+        lastSize = buffer.length;
       }
     }
   }

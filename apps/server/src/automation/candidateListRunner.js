@@ -100,5 +100,11 @@ async function runFullExtractionInBackground(job, session) {
     db.prepare("UPDATE jobs SET status = 'error', updated_at = ? WHERE id = ?").run(nowIso(), job.id);
   } finally {
     setBusy(job.id, false);
+    // Cierra el navegador al terminar: si se dejara abierto, el run pasa a un
+    // estado terminal (completed/error) pero la sesion en memoria seguiria
+    // "activa", y un futuro "Abrir navegador" para esta vacante reutilizaria
+    // ese navegador sin crear un run nuevo, dejando la UI bloqueada.
+    runLogger.info('Cerrando navegador al finalizar la extraccion.');
+    await session.context.close().catch(() => {});
   }
 }
