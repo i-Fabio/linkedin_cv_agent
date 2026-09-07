@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import { config } from '../config.js';
 import { ensureAppDirs } from '../utils/ensureDirs.js';
-import { SCHEMA_SQL } from './schema.js';
+import { SCHEMA_SQL, COLUMN_MIGRATIONS } from './schema.js';
 import { logger } from '../utils/logger.js';
 
 ensureAppDirs();
@@ -12,6 +12,15 @@ db.pragma('foreign_keys = ON');
 
 export function runMigrations() {
   db.exec(SCHEMA_SQL);
+  for (const { table, column, definition } of COLUMN_MIGRATIONS) {
+    const exists = db
+      .prepare(`SELECT 1 FROM pragma_table_info(?) WHERE name = ?`)
+      .get(table, column);
+    if (!exists) {
+      db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+      logger.info('Columna añadida por migracion', { table, column });
+    }
+  }
   logger.info('Database ready', { path: config.databasePath });
 }
 

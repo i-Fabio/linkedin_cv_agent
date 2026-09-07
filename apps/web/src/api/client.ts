@@ -1,4 +1,11 @@
-import type { Candidate, ExtractionRun, Job, QuestionMapping } from '../types';
+import type {
+  Candidate,
+  DiscoveredQuestion,
+  ExtractionRun,
+  Job,
+  JobCriterion,
+  QuestionMapping,
+} from '../types';
 
 export class ApiError extends Error {
   status: number;
@@ -48,6 +55,10 @@ export const downloadCurrentCandidatePdf = (id: number) =>
   request<Candidate>(`/jobs/${id}/download-current-candidate-pdf`, { method: 'POST' });
 export const startExtraction = (id: number) =>
   request<{ run: ExtractionRun }>(`/jobs/${id}/start-extraction`, { method: 'POST' });
+export const discoverQuestions = (id: number) =>
+  request<DiscoveredQuestion[]>(`/jobs/${id}/discover-questions`);
+export const reapplyQuestionMappings = (id: number) =>
+  request<{ updated: number }>(`/jobs/${id}/reapply-question-mappings`, { method: 'POST' });
 
 // Question mappings
 export const listQuestionMappings = (jobId: number) =>
@@ -67,6 +78,22 @@ export const updateQuestionMapping = (id: number, data: Partial<QuestionMapping>
   });
 export const deleteQuestionMapping = (id: number) =>
   request<void>(`/question-mappings/${id}`, { method: 'DELETE' });
+
+// Criterios de evaluación (módulo de análisis de CV)
+export const listJobCriteria = (jobId: number) =>
+  request<JobCriterion[]>(`/jobs/${jobId}/criteria`);
+export const createJobCriterion = (
+  jobId: number,
+  data: { name: string; type: string; weight?: number; description?: string | null }
+) =>
+  request<JobCriterion>(`/jobs/${jobId}/criteria`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+export const updateJobCriterion = (id: number, data: Partial<JobCriterion>) =>
+  request<JobCriterion>(`/criteria/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+export const deleteJobCriterion = (id: number) =>
+  request<void>(`/criteria/${id}`, { method: 'DELETE' });
 
 export function subscribeToRunEvents(
   runId: number,

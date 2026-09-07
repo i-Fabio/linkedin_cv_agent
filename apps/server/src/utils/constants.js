@@ -9,6 +9,17 @@ export const CANDIDATE_EXTRACTION_STATUSES = [
   'missing_pdf',
 ];
 
+// Estado del candidato en el proceso de selección (módulo de análisis de CV).
+// La UI muestra las etiquetas en español; en BD se guardan estos valores.
+export const CANDIDATE_PROCESS_STATUSES = [
+  'pending_analysis',
+  'cv_unreadable',
+  'analyzed',
+  'preselected',
+  'discarded',
+  'interview_scheduled',
+];
+
 export const RUN_STATUSES = [
   'opening',
   'awaiting_login',

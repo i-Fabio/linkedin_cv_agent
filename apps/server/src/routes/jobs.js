@@ -6,7 +6,11 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { JOB_STATUSES } from '../utils/constants.js';
 import { config } from '../config.js';
 import { openBrowserForJob, confirmLogin, getActiveRun } from '../automation/browserManager.js';
-import { extractCurrentCandidate } from '../automation/candidateExtractor.js';
+import {
+  extractCurrentCandidate,
+  discoverQuestionsFromCurrentPage,
+  reapplyQuestionMappings,
+} from '../automation/candidateExtractor.js';
 import { downloadCurrentCandidatePdf } from '../automation/pdfDownloader.js';
 import { startFullExtraction } from '../automation/candidateListRunner.js';
 import { serializeCandidate } from './candidates.js';
@@ -148,6 +152,33 @@ jobsRouter.post(
     try {
       const candidate = await extractCurrentCandidate(job);
       res.json(serializeCandidate(candidate));
+    } catch (err) {
+      res.status(409).json({ error: err.message });
+    }
+  })
+);
+
+// POST /api/jobs/:id/reapply-question-mappings
+jobsRouter.post(
+  '/:id/reapply-question-mappings',
+  asyncHandler(async (req, res) => {
+    const job = findJobOr404(req, res);
+    if (!job) return;
+
+    res.json(reapplyQuestionMappings(job.id));
+  })
+);
+
+// GET /api/jobs/:id/discover-questions
+jobsRouter.get(
+  '/:id/discover-questions',
+  asyncHandler(async (req, res) => {
+    const job = findJobOr404(req, res);
+    if (!job) return;
+
+    try {
+      const questions = await discoverQuestionsFromCurrentPage(job);
+      res.json(questions);
     } catch (err) {
       res.status(409).json({ error: err.message });
     }

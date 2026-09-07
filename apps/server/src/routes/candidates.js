@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { db } from '../db/index.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { CANDIDATE_EXTRACTION_STATUSES } from '../utils/constants.js';
+import { saveCvTextForCandidate } from '../analysis/cvTextExtractor.js';
+import { analyzeCandidate, AnalysisError, serializeAnalysis } from '../analysis/candidateAnalyzer.js';
 
 function nowIso() {
   return new Date().toISOString();
@@ -60,6 +62,66 @@ candidatesRouter.get(
     const candidate = findCandidateOr404(req.params.id, res);
     if (!candidate) return;
     res.json(serializeCandidate(candidate));
+  })
+);
+
+// POST /api/candidates/:id/reextract-text
+// Reintento manual de extraccion de texto del CV (p.ej. tras sustituir un PDF
+// ilegible). 409 si el candidato no tiene PDF descargado.
+candidatesRouter.post(
+  '/:id/reextract-text',
+  asyncHandler(async (req, res) => {
+    const candidate = findCandidateOr404(req.params.id, res);
+    if (!candidate) return;
+    if (!candidate.pdf_path) {
+      return res.status(409).json({ error: 'El candidato no tiene un PDF descargado' });
+    }
+
+    const { result, cvText } = await saveCvTextForCandidate(candidate);
+    const fresh = db.prepare('SELECT * FROM candidates WHERE id = ?').get(candidate.id);
+    res.json({
+      success: result.success,
+      error: result.error,
+      cv_text: {
+        ...cvText,
+        // El texto completo puede ser muy largo; se devuelve solo un extracto
+        // para inspeccion. El texto integro queda en BD para el analisis.
+        extracted_text: cvText.extracted_text ? `${cvText.extracted_text.slice(0, 500)}…` : null,
+        text_length: cvText.extracted_text ? cvText.extracted_text.length : 0,
+      },
+      candidate: serializeCandidate(fresh),
+    });
+  })
+);
+
+// POST /api/candidates/:id/analyze
+// Análisis IA bajo demanda (nunca automático). Cada análisis crea una fila
+// nueva en cv_analyses (histórico); el más reciente es el vigente.
+candidatesRouter.post(
+  '/:id/analyze',
+  asyncHandler(async (req, res) => {
+    try {
+      const analysis = await analyzeCandidate(req.params.id);
+      res.status(201).json(analysis);
+    } catch (err) {
+      if (err instanceof AnalysisError) {
+        return res.status(err.status).json({ error: err.message });
+      }
+      throw err;
+    }
+  })
+);
+
+// GET /api/candidates/:id/analyses — histórico de análisis, el más reciente primero
+candidatesRouter.get(
+  '/:id/analyses',
+  asyncHandler(async (req, res) => {
+    const candidate = findCandidateOr404(req.params.id, res);
+    if (!candidate) return;
+    const rows = db
+      .prepare('SELECT * FROM cv_analyses WHERE candidate_id = ? ORDER BY created_at DESC, id DESC')
+      .all(candidate.id);
+    res.json(rows.map(serializeAnalysis));
   })
 );
 

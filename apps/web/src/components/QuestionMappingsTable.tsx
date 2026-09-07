@@ -2,10 +2,12 @@ import { FormEvent, useEffect, useState } from 'react';
 import {
   createQuestionMapping,
   deleteQuestionMapping,
+  discoverQuestions,
   listQuestionMappings,
+  reapplyQuestionMappings,
   updateQuestionMapping,
 } from '../api/client';
-import { FieldType, INTERNAL_FIELD_SUGGESTIONS, QuestionMapping } from '../types';
+import { DiscoveredQuestion, FieldType, INTERNAL_FIELD_SUGGESTIONS, QuestionMapping } from '../types';
 
 interface Props {
   jobId: number;
@@ -22,6 +24,10 @@ export default function QuestionMappingsTable({ jobId }: Props) {
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState(emptyForm);
+  const [discovered, setDiscovered] = useState<DiscoveredQuestion[] | null>(null);
+  const [discovering, setDiscovering] = useState(false);
+  const [reapplying, setReapplying] = useState(false);
+  const [reapplyMessage, setReapplyMessage] = useState<string | null>(null);
 
   async function refresh() {
     setLoading(true);
@@ -39,6 +45,37 @@ export default function QuestionMappingsTable({ jobId }: Props) {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobId]);
+
+  async function handleDiscover() {
+    setDiscovering(true);
+    try {
+      setDiscovered(await discoverQuestions(jobId));
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error descubriendo preguntas');
+    } finally {
+      setDiscovering(false);
+    }
+  }
+
+  function useDiscovered(q: DiscoveredQuestion) {
+    setForm({ ...emptyForm, question_text: q.question_text, field_type: q.suggested_field_type });
+    setDiscovered((prev) => prev?.filter((d) => d.question_text !== q.question_text) ?? null);
+  }
+
+  async function handleReapply() {
+    setReapplying(true);
+    setReapplyMessage(null);
+    try {
+      const { updated } = await reapplyQuestionMappings(jobId);
+      setReapplyMessage(`Mapeo aplicado a ${updated} candidato(s) ya extraído(s).`);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error aplicando el mapeo');
+    } finally {
+      setReapplying(false);
+    }
+  }
 
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
@@ -100,6 +137,50 @@ export default function QuestionMappingsTable({ jobId }: Props) {
       </p>
 
       {error && <div className="error-banner">{error}</div>}
+
+      <div style={{ marginBottom: 16 }}>
+        <button className="btn btn-secondary btn-sm" onClick={handleReapply} disabled={reapplying}>
+          {reapplying ? 'Aplicando...' : 'Aplicar mapeo a CVs ya extraídos'}
+        </button>
+        <p className="muted" style={{ marginTop: 4 }}>
+          Vuelve a normalizar las respuestas ya guardadas de los candidatos con los mapeos
+          actuales, sin volver a abrir LinkedIn.
+        </p>
+        {reapplyMessage && <div className="muted">{reapplyMessage}</div>}
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <button className="btn btn-secondary btn-sm" onClick={handleDiscover} disabled={discovering}>
+          {discovering ? 'Leyendo página...' : 'Descubrir preguntas desde LinkedIn'}
+        </button>
+        <p className="muted" style={{ marginTop: 4 }}>
+          Abre un candidato en el navegador de esta vacante y pulsa aquí para leer sus preguntas
+          de preselección directamente, sin copiarlas a mano.
+        </p>
+
+        {discovered && discovered.filter((q) => !q.already_mapped).length === 0 && (
+          <div className="empty-state">No hay preguntas nuevas sin mapear en esta página.</div>
+        )}
+
+        {discovered && discovered.some((q) => !q.already_mapped) && (
+          <ul style={{ listStyle: 'none', padding: 0 }}>
+            {discovered
+              .filter((q) => !q.already_mapped)
+              .map((q) => (
+                <li
+                  key={q.question_text}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}
+                >
+                  <button className="btn btn-sm" onClick={() => useDiscovered(q)} type="button">
+                    Usar
+                  </button>
+                  <span>{q.question_text}</span>
+                  <span className="muted">(ej: "{q.sample_answer}")</span>
+                </li>
+              ))}
+          </ul>
+        )}
+      </div>
 
       <datalist id="internal-field-suggestions">
         {INTERNAL_FIELD_SUGGESTIONS.map((field) => (

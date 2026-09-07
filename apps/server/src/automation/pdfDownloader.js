@@ -3,6 +3,7 @@ import { db } from '../db/index.js';
 import { getSession } from './browserManager.js';
 import { findOrCreateCandidateStub, deriveNameFromPage, cleanCandidateName } from './candidateStore.js';
 import { normalizeFilename } from '../utils/normalizeFilename.js';
+import { saveCvTextForCandidate } from '../analysis/cvTextExtractor.js';
 
 // LinkedIn cambia el texto de los botones con frecuencia (ver
 // docs/09_IMPLEMENTATION_NOTES.md), asi que se busca por nombre accesible
@@ -157,6 +158,22 @@ export async function downloadCurrentCandidatePdf(job) {
   db.prepare(
     'UPDATE candidates SET pdf_filename = ?, pdf_path = ?, extraction_status = ?, updated_at = ? WHERE id = ?'
   ).run(fileName, targetPath, newStatus, nowIso(), candidate.id);
+
+  // El texto del CV se extrae una sola vez, en el momento de la descarga, y se
+  // reutiliza en los analisis posteriores. Un fallo aqui no aborta la descarga:
+  // el candidato queda marcado como cv_unreadable y se puede reintentar via
+  // POST /api/candidates/:id/reextract-text.
+  const withPdf = db.prepare('SELECT * FROM candidates WHERE id = ?').get(candidate.id);
+  try {
+    const { result } = await saveCvTextForCandidate(withPdf);
+    if (result.success) {
+      runLogger.info(`Texto del CV extraido (${result.text.length} caracteres)`);
+    } else {
+      runLogger.warn(`No se pudo extraer texto del CV: ${result.error}`);
+    }
+  } catch (error) {
+    runLogger.warn(`Error inesperado extrayendo texto del CV: ${error.message}`);
+  }
 
   return db.prepare('SELECT * FROM candidates WHERE id = ?').get(candidate.id);
 }

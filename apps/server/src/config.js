@@ -20,4 +20,7 @@ export const config = {
   downloadsDir: resolveFromRoot(process.env.DOWNLOADS_DIR, './data/downloads'),
   browserSessionDir: resolveFromRoot(process.env.BROWSER_SESSION_DIR, './data/browser-session'),
   logsDir: resolveFromRoot(process.env.LOGS_DIR, './data/logs'),
+  promptsDir: resolveFromRoot(process.env.PROMPTS_DIR, './prompts'),
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY || null,
+  anthropicModel: process.env.ANTHROPIC_MODEL || 'claude-opus-4-8',
 };

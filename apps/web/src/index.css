@@ -340,6 +340,80 @@ code {
   font-size: 12px;
 }
 
+.table-scroll {
+  overflow-x: auto;
+}
+
+.table-meta {
+  margin: 0 0 8px;
+}
+
+.th-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.th-sortable:hover {
+  color: var(--color-text);
+}
+
+.sort-indicator {
+  font-size: 10px;
+  color: var(--color-primary);
+}
+
+.sort-indicator sup {
+  font-size: 9px;
+}
+
+.sort-indicator-idle {
+  color: var(--color-border);
+}
+
+.th-sortable:hover .sort-indicator-idle {
+  color: var(--color-text-muted);
+}
+
+.filter-row th {
+  padding: 4px 6px;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.filter-input {
+  font-size: 12px;
+  padding: 4px 6px;
+  min-width: 80px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  width: 100%;
+}
+
+.table-scroll th {
+  white-space: nowrap;
+}
+
+.answers-list {
+  margin: 4px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.answers-item dt {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-bottom: 2px;
+}
+
+.answers-item dd {
+  margin: 0;
+  font-size: 14px;
+}
+
 .logs-box {
   background: #0f1117;
   color: #d1d5db;

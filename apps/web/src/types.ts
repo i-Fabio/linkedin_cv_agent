@@ -27,6 +27,13 @@ export interface QuestionMapping {
   updated_at: string;
 }
 
+export interface DiscoveredQuestion {
+  question_text: string;
+  sample_answer: string;
+  suggested_field_type: FieldType;
+  already_mapped: boolean;
+}
+
 export type RunStatus =
   | 'opening'
   | 'awaiting_login'
@@ -54,6 +61,24 @@ export const RUN_STATUS_LABELS: Record<RunStatus, string> = {
   processing: 'Extrayendo candidatos',
   completed: 'Completado',
   error: 'Error',
+};
+
+export type CriterionType = 'must_have' | 'nice_to_have';
+
+export interface JobCriterion {
+  id: number;
+  job_id: number;
+  name: string;
+  type: CriterionType;
+  weight: number;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const CRITERION_TYPE_LABELS: Record<CriterionType, string> = {
+  must_have: 'Imprescindible',
+  nice_to_have: 'Valorable',
 };
 
 export type CandidateExtractionStatus = 'pending' | 'ok' | 'error' | 'missing_pdf';

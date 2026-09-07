@@ -4,10 +4,11 @@ import { ApiError, confirmLogin, getJob, openBrowser, startExtraction, updateJob
 import { Job, JobStatus, JOB_STATUS_LABELS } from '../types';
 import StatusBadge from '../components/StatusBadge';
 import QuestionMappingsTable from '../components/QuestionMappingsTable';
+import JobCriteriaTable from '../components/JobCriteriaTable';
 import CandidatesTable from '../components/CandidatesTable';
 import LogsPanel from '../components/LogsPanel';
 
-type Tab = 'mapping' | 'candidates' | 'logs';
+type Tab = 'mapping' | 'criteria' | 'candidates' | 'logs';
 
 const STATUS_OPTIONS: JobStatus[] = ['pending', 'in_progress', 'completed', 'error'];
 
@@ -253,6 +254,9 @@ export default function JobDetailPage() {
         <button className={`tab-btn ${tab === 'mapping' ? 'active' : ''}`} onClick={() => setTab('mapping')}>
           Mapeo de preguntas
         </button>
+        <button className={`tab-btn ${tab === 'criteria' ? 'active' : ''}`} onClick={() => setTab('criteria')}>
+          Criterios de evaluación
+        </button>
         <button
           className={`tab-btn ${tab === 'candidates' ? 'active' : ''}`}
           onClick={() => setTab('candidates')}
@@ -265,6 +269,7 @@ export default function JobDetailPage() {
       </div>
 
       {tab === 'mapping' && <QuestionMappingsTable jobId={job.id} />}
+      {tab === 'criteria' && <JobCriteriaTable jobId={job.id} />}
       {tab === 'candidates' && <CandidatesTable jobId={job.id} activeRun={job.active_run ?? null} />}
       {tab === 'logs' && <LogsPanel activeRun={job.active_run ?? null} />}
     </div>
