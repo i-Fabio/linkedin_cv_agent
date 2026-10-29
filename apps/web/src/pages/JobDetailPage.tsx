@@ -1,6 +1,15 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ApiError, confirmLogin, getJob, openBrowser, startExtraction, updateJob } from '../api/client';
+import {
+  ApiError,
+  backfillPhotos,
+  confirmLogin,
+  exportViewer,
+  getJob,
+  openBrowser,
+  startExtraction,
+  updateJob,
+} from '../api/client';
 import { Job, JobStatus, JOB_STATUS_LABELS } from '../types';
 import StatusBadge from '../components/StatusBadge';
 import QuestionMappingsTable from '../components/QuestionMappingsTable';
@@ -26,6 +35,8 @@ export default function JobDetailPage() {
   const [status, setStatus] = useState<JobStatus>('pending');
   const [saving, setSaving] = useState(false);
   const [browserActionLoading, setBrowserActionLoading] = useState(false);
+  const [viewerExportLoading, setViewerExportLoading] = useState(false);
+  const [viewerPassword, setViewerPassword] = useState<string | null>(null);
 
   async function refresh() {
     setLoading(true);
@@ -91,6 +102,34 @@ export default function JobDetailPage() {
       setError(null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Error iniciando la extracción');
+    } finally {
+      setBrowserActionLoading(false);
+    }
+  }
+
+  async function handleExportViewer() {
+    setViewerExportLoading(true);
+    setViewerPassword(null);
+    try {
+      const password = await exportViewer(jobId);
+      setViewerPassword(password);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Error exportando el visualizador');
+    } finally {
+      setViewerExportLoading(false);
+    }
+  }
+
+  async function handleBackfillPhotos() {
+    setBrowserActionLoading(true);
+    try {
+      await backfillPhotos(jobId);
+      await refresh();
+      setTab('logs');
+      setError(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Error buscando fotos pendientes');
     } finally {
       setBrowserActionLoading(false);
     }
@@ -181,6 +220,18 @@ export default function JobDetailPage() {
             Iniciar extracción
           </button>
         )}
+        <button
+          className="btn btn-secondary"
+          onClick={handleBackfillPhotos}
+          disabled={job.active_run?.status !== 'awaiting_extraction' || browserActionLoading}
+          title={
+            job.active_run?.status === 'awaiting_extraction'
+              ? 'Repasa los candidatos ya procesados que se quedaron sin foto de perfil'
+              : 'Requiere un navegador abierto con login confirmado'
+          }
+        >
+          Buscar fotos pendientes
+        </button>
         <a
           className={exportClass}
           href={hasCandidates ? `/api/jobs/${job.id}/export.csv` : undefined}
@@ -205,7 +256,38 @@ export default function JobDetailPage() {
         >
           Exportar ZIP
         </a>
+        <button
+          className="btn btn-secondary"
+          onClick={handleExportViewer}
+          disabled={!hasCandidates || viewerExportLoading}
+          title={hasCandidates ? undefined : exportTitle}
+        >
+          {viewerExportLoading ? 'Generando...' : 'Exportar visualizador'}
+        </button>
       </div>
+
+      {viewerPassword && (
+        <div className="card" style={{ borderColor: '#0a66c2' }}>
+          <strong>Visualizador generado.</strong> Sube el ZIP descargado a una carpeta de tu
+          servidor Apache (por HTTPS) y descomprímelo ahí. Contraseña de acceso (solo se muestra
+          una vez, guárdala ahora):
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.5rem' }}>
+            <code style={{ fontSize: '1.1rem', padding: '0.3rem 0.6rem', background: '#f5f6f8', borderRadius: 4 }}>
+              {viewerPassword}
+            </code>
+            <button
+              className="btn btn-secondary"
+              type="button"
+              onClick={() => navigator.clipboard.writeText(viewerPassword)}
+            >
+              Copiar
+            </button>
+            <button className="btn btn-secondary" type="button" onClick={() => setViewerPassword(null)}>
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="card">
         <h2>Datos de la vacante</h2>

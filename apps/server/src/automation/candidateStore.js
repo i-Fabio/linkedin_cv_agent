@@ -55,6 +55,53 @@ export async function deriveNameFromPage(page) {
   return deriveNameFromTitle(await page.title().catch(() => null));
 }
 
+// El enlace al perfil publico de LinkedIn (linkedin.com/in/...) es distinto
+// de la URL de la solicitud (page.url()): en la vista de detalle del
+// solicitante suele haber un enlace "Ver perfil de LinkedIn" con ese href.
+export async function derivePublicProfileUrlFromPage(page) {
+  const href = await page
+    .locator('a[href*="linkedin.com/in/"]')
+    .first()
+    .getAttribute('href', { timeout: 1500 })
+    .catch(() => null);
+  if (!href) return null;
+  try {
+    const u = new URL(href, page.url());
+    return u.origin + u.pathname;
+  } catch {
+    return href;
+  }
+}
+
+// Foto de perfil: confirmado con HTML real (2026-09-16) que un selector
+// generico `img[src*="licdn.com"]` engancha SIEMPRE el avatar de la barra de
+// navegacion superior (el del propio usuario logueado, alt = su nombre),
+// porque aparece antes en el DOM que la foto del candidato. La lista de
+// solicitantes de la izquierda marca la ficha abierta con clase "active" en
+// el <a>; su miniatura (alt="Foto de {Nombre}") es la foto real del
+// candidato actual. Sin ese match, se devuelve null antes que arriesgarse a
+// guardar la foto de otra persona.
+export async function derivePhotoUrlFromPage(page, timeoutMs = 5000) {
+  // El panel/lista hidrata de forma asincrona tras el goto (mismo problema
+  // que el boton de descarga del CV en pdfDownloader.js): un solo intento
+  // con timeout corto llega antes de que "active" se aplique, sobre todo en
+  // candidatos que no estan en la primera pagina de la lista lateral. Se
+  // reintenta activamente en vez de mirar una sola vez.
+  const locator = page.locator('a.active img.hiring-selectable-entity__entity[src*="licdn.com"]').first();
+  const deadline = Date.now() + timeoutMs;
+  let src = null;
+  while (!src && Date.now() < deadline) {
+    src = await locator.getAttribute('src', { timeout: 500 }).catch(() => null);
+    if (!src) await page.waitForTimeout(400);
+  }
+  if (!src) return null;
+  try {
+    return new URL(src, page.url()).href;
+  } catch {
+    return src;
+  }
+}
+
 export function findCandidateByProfileUrl(jobId, profileUrl) {
   return db
     .prepare('SELECT * FROM candidates WHERE job_id = ? AND linkedin_profile_url = ?')

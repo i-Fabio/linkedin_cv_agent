@@ -66,8 +66,16 @@ async function runFullExtractionInBackground(job, session) {
           await page.goto(link.url, { waitUntil: 'domcontentloaded' });
         }
         // La primera linea de la tarjeta de la lista suele ser el nombre;
-        // sirve de respaldo si la pagina de detalle no lo expone.
-        await extractCurrentCandidate(job, { fallbackName: cleanCandidateName(link.name) });
+        // sirve de respaldo si la pagina de detalle no lo expone. La foto se
+        // paso ya recolectada de la lista (ver detectAllCandidateLinks): tras
+        // el goto a la URL de este candidato, su fila puede no seguir
+        // renderizada/paginada en el DOM, asi que derivarla desde la pagina
+        // actual del candidato ya no es fiable para quienes no esten en la
+        // primera pagina de la lista.
+        await extractCurrentCandidate(job, {
+          fallbackName: cleanCandidateName(link.name),
+          knownPhotoUrl: link.photoUrl ?? null,
+        });
         try {
           await downloadCurrentCandidatePdf(job);
         } catch (pdfErr) {

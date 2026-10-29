@@ -13,12 +13,14 @@ import {
 } from '../automation/candidateExtractor.js';
 import { downloadCurrentCandidatePdf } from '../automation/pdfDownloader.js';
 import { startFullExtraction } from '../automation/candidateListRunner.js';
+import { startPhotoBackfill } from '../automation/photoBackfillRunner.js';
 import { serializeCandidate } from './candidates.js';
 import { normalizeFilename } from '../utils/normalizeFilename.js';
 import { buildExportData } from '../exports/exportData.js';
 import { rowsToCsv } from '../utils/csv.js';
 import { buildXlsxBuffer } from '../exports/xlsxExport.js';
 import { streamZipExport } from '../exports/zipExport.js';
+import { streamViewerExport } from '../exports/viewerExport.js';
 
 export const jobsRouter = Router();
 
@@ -217,6 +219,22 @@ jobsRouter.post(
   })
 );
 
+// POST /api/jobs/:id/backfill-photos
+jobsRouter.post(
+  '/:id/backfill-photos',
+  asyncHandler(async (req, res) => {
+    const job = findJobOr404(req, res);
+    if (!job) return;
+
+    try {
+      const run = startPhotoBackfill(job);
+      res.status(202).json({ run });
+    } catch (err) {
+      res.status(409).json({ error: err.message });
+    }
+  })
+);
+
 // GET /api/jobs/:id/export.csv
 jobsRouter.get(
   '/:id/export.csv',
@@ -265,6 +283,23 @@ jobsRouter.get(
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     streamZipExport(job, res);
+  })
+);
+
+// POST /api/jobs/:id/export-viewer
+// Genera el visualizador estatico (HTML+JS autocontenido, protegido con una
+// contraseña generada al vuelo, cifrado con Web Crypto en el navegador) para
+// subir a un servidor (p.ej. Apache) fuera de esta app. La contraseña viaja
+// solo en la cabecera X-Viewer-Password, nunca se guarda en BD.
+jobsRouter.post(
+  '/:id/export-viewer',
+  asyncHandler(async (req, res) => {
+    const job = findJobOr404(req, res);
+    if (!job) return;
+
+    const filename = `visualizador-${normalizeFilename(job.name)}.zip`;
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    streamViewerExport(job, res);
   })
 );
 

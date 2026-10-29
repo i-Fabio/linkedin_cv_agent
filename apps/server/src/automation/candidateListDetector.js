@@ -16,10 +16,20 @@ async function collectCandidateLinks(page) {
         // Clave por id de solicitante, no por href completo: el mismo candidato
         // puede aparecer con query params distintos segun la pagina de la lista.
         if (match && !seen.has(match[1])) {
-          seen.set(match[1], { url: a.href, name: a.innerText?.trim() || null });
+          // La miniatura de foto vive dentro del mismo <a> que el enlace de
+          // detalle (ver derivePhotoUrlFromPage en candidateStore.js para el
+          // porque de esta clase concreta); se captura aqui de una vez porque
+          // solo existe en el DOM mientras la fila esta cargada/paginada, y
+          // visitar cada candidato por su URL despues no la trae de vuelta.
+          const img = a.querySelector('img.hiring-selectable-entity__entity[src]');
+          seen.set(match[1], {
+            url: a.href,
+            name: a.innerText?.trim() || null,
+            photoUrl: img ? img.getAttribute('src') : null,
+          });
         }
       }
-      return [...seen.entries()].map(([id, { url, name }]) => ({ id, url, name }));
+      return [...seen.entries()].map(([id, v]) => ({ id, ...v }));
     },
     DETAIL_URL_PATTERN.source
   );
@@ -164,7 +174,7 @@ export async function detectAllCandidateLinks(
     }
   }
 
-  return [...all.values()].map(({ url, name }) => ({ url, name }));
+  return [...all.values()].map(({ url, name, photoUrl }) => ({ url, name, photoUrl }));
 }
 
 export function looksLikeCandidateDetailPage(url) {

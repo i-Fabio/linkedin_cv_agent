@@ -121,4 +121,19 @@ export const COLUMN_MIGRATIONS = [
     column: 'output_tokens',
     definition: 'INTEGER',
   },
+  {
+    table: 'candidates',
+    column: 'public_profile_url',
+    definition: 'TEXT',
+  },
+  {
+    table: 'candidates',
+    column: 'photo_filename',
+    definition: 'TEXT',
+  },
+  {
+    table: 'candidates',
+    column: 'photo_path',
+    definition: 'TEXT',
+  },
 ];

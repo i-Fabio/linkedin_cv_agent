@@ -7,7 +7,7 @@ import { logger } from './utils/logger.js';
 export function createApp() {
   const app = express();
 
-  app.use(cors());
+  app.use(cors({ exposedHeaders: ['X-Viewer-Password', 'Content-Disposition'] }));
   app.use(express.json());
   app.use(morgan('dev'));
 

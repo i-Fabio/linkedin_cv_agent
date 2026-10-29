@@ -55,10 +55,40 @@ export const downloadCurrentCandidatePdf = (id: number) =>
   request<Candidate>(`/jobs/${id}/download-current-candidate-pdf`, { method: 'POST' });
 export const startExtraction = (id: number) =>
   request<{ run: ExtractionRun }>(`/jobs/${id}/start-extraction`, { method: 'POST' });
+export const backfillPhotos = (id: number) =>
+  request<{ run: ExtractionRun }>(`/jobs/${id}/backfill-photos`, { method: 'POST' });
 export const discoverQuestions = (id: number) =>
   request<DiscoveredQuestion[]>(`/jobs/${id}/discover-questions`);
 export const reapplyQuestionMappings = (id: number) =>
   request<{ updated: number }>(`/jobs/${id}/reapply-question-mappings`, { method: 'POST' });
+
+// Descarga el ZIP del visualizador estatico (fetch en vez de <a href> porque
+// necesitamos leer la contraseña generada de la cabecera de la respuesta).
+// Devuelve la contraseña para mostrarsela al usuario una sola vez.
+export async function exportViewer(jobId: number): Promise<string> {
+  const res = await fetch(`/api/jobs/${jobId}/export-viewer`, { method: 'POST' });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new ApiError(res.status, (body && body.error) || `Error ${res.status}`);
+  }
+
+  const password = res.headers.get('X-Viewer-Password') ?? '';
+  const disposition = res.headers.get('Content-Disposition') ?? '';
+  const match = /filename="([^"]+)"/.exec(disposition);
+  const filename = match ? match[1] : `visualizador-${jobId}.zip`;
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+
+  return password;
+}
 
 // Question mappings
 export const listQuestionMappings = (jobId: number) =>
